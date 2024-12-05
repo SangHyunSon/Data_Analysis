@@ -1,0 +1,69 @@
+Quality control 최종
+[SNP filtering]
+
+Local
+0) INFO Score > 0.8
+awk '$8 > 0.8' ukb_mfi_chr6_v3.txt > filtered_output_c6.txt
+awk '{print "6:" $3 "_" $4 "_" $5}' filtered_output_c6.txt > variant_ids_c6.txt
+
+1) 
+plink2 --bgen ukb22828_c6_b0_v3.bgen ref-first --sample ukb22828_c6_b0_v3_s487159.sample --remove exclude_pats.txt --make-pgen --out c6_mut
+
+2) 
+plink2 --pfile c6_mut --geno 0.01 --maf 0.0001 --max-maf 0.001 --max-alleles 2 --threads 8 --make-pgen --out c6_filtered1
+
+3)
+plink2 --pfile c6_filtered1 --hwe 1e-6 --set-all-var-ids '@:#_$r_$a' --new-id-max-allele-len 200 --threads 8 --make-pgen --out c6_hwe_filtered
+
+4)
+plink2 --pfile c6_hwe_filtered --extract variant_ids_c6.txt --threads 8 --make-pgen --out c6_impqual_filtered
+
+HPC
+5)
+./plink2 --pfile c6_impqual_filtered --threads 20 --indep-pairwise 500 100 0.5 --out c6_ld_pruned
+
+6)
+./plink2 --pfile c6_impqual_filtered --extract c6_ld_pruned.prune.in --make-pgen --out c6_ld_pruned_var
+
+--> 염색체별로 저장
+
+7)
+./plink2 --pfile c6_ld_pruned_var --glm allow-no-covars --ci 0.95 --pheno SNP_POP.tab --pheno-name MG --threads 20 --out c6_logistic_MG
+
+
+
+[Emtpy rsID]
+bgenix -g ukb22828_c22_b0_v3.bgen -incl-rsids c22_incl_filtered.txt > c22_filtered.bgen
+plink2 --bgen c22_filtered.bgen ref-first --sample ukb22828_c22_b0_v3_s487159.sample --remove exclude_pats.txt --threads 8 --make-pgen --out c22_mut
+
+(output)
+PLINK v2.0.0-a.6LM 64-bit Intel (14 Oct 2024)      cog-genomics.org/plink/2.0/
+(C) 2005-2024 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to c22_mut.log.
+Options in effect:
+  --bgen c22_filtered.bgen ref-first
+  --make-pgen
+  --out c22_mut
+  --remove exclude_pats.txt
+  --sample ukb22828_c22_b0_v3_s487159.sample
+  --threads 8
+
+Start time: Wed Dec  4 22:59:30 2024
+15914 MiB RAM detected, ~15195 available; reserving 7957 MiB for main
+workspace.
+Using up to 8 compute threads.
+--bgen: 21431 variants declared in header, format v1.2.
+487409 samples imported from .sample file to c22_mut-temporary.psam .
+--bgen: c22_mut-temporary.pgen + c22_mut-temporary.pvar written.
+487409 samples (264221 females, 222938 males, 250 ambiguous; 487409 founders)
+loaded from c22_mut-temporary.psam.
+21431 variants loaded from c22_mut-temporary.pvar.
+Note: No phenotype data present.
+--remove: 487159 samples remaining.
+487159 samples (264221 females, 222938 males; 487159 founders) remaining after
+main filters.
+Writing c22_mut.psam ... done.
+Writing c22_mut.pvar ... done.
+Writing c22_mut.pgen ... done.
+End time: Wed Dec  4 22:59:47 2024
+
